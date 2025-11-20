@@ -1,0 +1,31 @@
+# Configuración WAN IP Estática - Mikrotik
+# Generado automáticamente
+
+# Configurar interfaz WAN
+/ip address
+add address={{ wan_ip }}/{{ wan_mask }} interface={{ wan_interface }} comment="WAN Static IP"
+
+# Configurar gateway por defecto
+/ip route
+add dst-address=0.0.0.0/0 gateway={{ gateway }} comment="Default Route"
+
+# Configurar DNS
+/ip dns
+set servers={{ dns1 }}
+set allow-remote-requests=yes
+
+# Configuración básica de firewall
+/ip firewall filter
+add chain=input action=accept connection-state=established,related comment="Accept established/related"
+add chain=input action=accept src-address=192.168.0.0/16 comment="Accept LAN"
+add chain=input action=drop comment="Drop all other input"
+
+add chain=forward action=accept connection-state=established,related comment="Accept established/related"
+add chain=forward action=accept src-address=192.168.0.0/16 comment="Accept from LAN"
+add chain=forward action=drop comment="Drop all other forward"
+
+# NAT para salida a internet
+/ip firewall nat
+add chain=srcnat out-interface={{ wan_interface }} action=masquerade comment="NAT to WAN"
+
+# Configuración completada

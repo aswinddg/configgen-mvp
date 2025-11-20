@@ -1,0 +1,30 @@
+# Configuración WAN IP Estática - Juniper
+# Generado automáticamente
+
+# Configurar interfaz WAN
+set interfaces {{ wan_interface }} unit 0 family inet address {{ wan_ip }}/{{ wan_mask }}
+set interfaces {{ wan_interface }} unit 0 description "WAN Interface"
+
+# Configurar ruta por defecto
+set routing-options static route 0.0.0.0/0 next-hop {{ gateway }}
+
+# Configurar DNS
+set system name-server {{ dns1 }}
+
+# Configuración básica de firewall
+set security zones security-zone untrust interfaces {{ wan_interface }}.0
+set security zones security-zone trust interfaces ge-0/0/1.0
+
+# Políticas de seguridad básicas
+set security policies from-zone trust to-zone untrust policy allow-all match source-address any
+set security policies from-zone trust to-zone untrust policy allow-all match destination-address any
+set security policies from-zone trust to-zone untrust policy allow-all match application any
+set security policies from-zone trust to-zone untrust policy allow-all then permit
+
+# NAT para salida a internet
+set security nat source rule-set trust-to-untrust from zone trust
+set security nat source rule-set trust-to-untrust to zone untrust
+set security nat source rule-set trust-to-untrust rule source-nat match source-address 192.168.0.0/16
+set security nat source rule-set trust-to-untrust rule source-nat then source-nat interface
+
+# Configuración completada

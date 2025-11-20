@@ -1,0 +1,23 @@
+[tool.pyright]
+include = ["backend"]
+exclude = [
+    "**/__pycache__",
+    "**/node_modules",
+    "**/.venv",
+    "**/venv"
+]
+executionEnvironments = [
+    { root = "backend", pythonVersion = "3.11" }
+]
+typeCheckingMode = "basic"
+reportMissingImports = true
+reportMissingTypeStubs = false
+
+[tool.pylint]
+init-hook = "import sys; sys.path.insert(0, 'backend')"
+
+
+
+
+
+
