@@ -11,6 +11,25 @@ async def simple_setup():
             INSERT OR REPLACE INTO params (scenario_id, key, label, type, required, default_value, options)
             VALUES (1, 'wan_interface', 'Interfaz WAN', 'select', 1, 'ether1', 'ether1,ether2,ether3,ether4,ether5,ether6,ether7,ether8,ether9,ether10,ether11,sfp1,sfp2')
         """)
+
+        # Nuevos parámetros para Mikrotik (scenario_id = 1)
+        mikrotik_params = [
+            (1, 'bridge_name', 'Nombre del Bridge', 'text', 1, '', ''),
+            (1, 'lan_ip', 'IP LAN', 'text', 1, '', ''),
+            (1, 'lan_mask', 'Máscara LAN (CIDR)', 'text', 1, '', ''),
+            (1, 'lan_network', 'Red LAN', 'text', 1, '', ''),
+            (1, 'dhcp_pool_start', 'Inicio Pool DHCP', 'text', 1, '', ''),
+            (1, 'dhcp_pool_end', 'Fin Pool DHCP', 'text', 1, '', ''),
+            (1, 'dhcp_lease_time', 'Tiempo de Concesión', 'text', 1, '', ''),
+            (1, 'dns_servers', 'Servidores DNS', 'text', 1, '', ''),
+            (1, 'system_identity', 'Nombre del Router', 'text', 1, '', '')
+        ]
+
+        for param in mikrotik_params:
+            cursor.execute("""
+                INSERT OR REPLACE INTO params (scenario_id, key, label, type, required, default_value, options)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
+            """, param)
         
         # Crear scenario para Cisco si no existe
         cursor.execute("SELECT id FROM vendors WHERE name = 'Cisco'")

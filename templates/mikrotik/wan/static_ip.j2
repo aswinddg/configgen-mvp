@@ -24,8 +24,60 @@ add chain=forward action=accept connection-state=established,related comment="Ac
 add chain=forward action=accept src-address=192.168.0.0/16 comment="Accept from LAN"
 add chain=forward action=drop comment="Drop all other forward"
 
+# Configuración WAN IP Estática - Mikrotik
+# Generado automáticamente
+
+# Configurar interfaz WAN
+/ip address
+add address={{ wan_ip }}/{{ wan_mask }} interface={{ wan_interface }} comment="WAN Static IP"
+
+# Configurar gateway por defecto
+/ip route
+add dst-address=0.0.0.0/0 gateway={{ gateway }} comment="Default Route"
+
+# Configurar DNS
+/ip dns
+set servers={{ dns1 }}
+set allow-remote-requests=yes
+
+# Configuración básica de firewall
+/ip firewall filter
+add chain=input action=accept connection-state=established,related comment="Accept established/related"
+add chain=input action=accept src-address=192.168.0.0/16 comment="Accept LAN"
+add chain=input action=drop comment="Drop all other input"
+
+add chain=forward action=accept connection-state=established,related comment="Accept established/related"
+add chain=forward action=accept src-address=192.168.0.0/16 comment="Accept from LAN"
+add chain=forward action=drop comment="Drop all other forward"
+
 # NAT para salida a internet
 /ip firewall nat
 add chain=srcnat out-interface={{ wan_interface }} action=masquerade comment="NAT to WAN"
 
 # Configuración completada
+
+# Additional Configuration
+/interface bridge
+add name="{{ bridge_name }}"
+/interface ethernet
+set [ find default-name=ether1 ] comment="WAN 1"
+/ip pool
+add name=dhcp_pool0 ranges={{ dhcp_pool_start }}-{{ dhcp_pool_end }}
+/ip dhcp-server
+add address-pool=dhcp_pool0 interface="{{ bridge_name }}" lease-time={{ dhcp_lease_time }} name=dhcp1
+/interface bridge port
+add bridge="{{ bridge_name }}" interface=ether2
+add bridge="{{ bridge_name }}" interface=ether3
+add bridge="{{ bridge_name }}" interface=ether4
+/ip address
+add address={{ lan_ip }}/{{ lan_mask }} interface="{{ bridge_name }}" network={{ lan_network }}
+/ip dhcp-client
+add comment="WAN 1" interface=ether1
+/ip dhcp-server network
+add address={{ lan_network }}/{{ lan_mask }} gateway={{ lan_ip }}
+/ip dns
+set servers={{ dns_servers }}
+/ip firewall nat
+add action=masquerade chain=srcnat out-interface=ether1
+/system identity
+set name={{ system_identity }}

@@ -122,11 +122,20 @@ export default function Home() {
     }
   };
 
+  const areParamsValid = () => {
+    if (params.length === 0) return false;
+    return params.every(param => {
+      if (!param.required) return true;
+      const value = formData[param.key];
+      return value && value.trim() !== '';
+    });
+  };
+
   const steps = [
     { id: 1, label: 'Vendor', active: Boolean(selectedVendor) },
     { id: 2, label: 'Escenario', active: Boolean(selectedScenario) },
-    { id: 3, label: 'Parámetros', active: params.length > 0 },
-    { id: 4, label: 'Descarga', active: params.length > 0 && !loading }
+    { id: 3, label: 'Parámetros', active: areParamsValid() },
+    { id: 4, label: 'Descarga', active: areParamsValid() && !loading }
   ];
 
   const CompletionBadge = ({ active }: { active: boolean }) => (
@@ -229,9 +238,8 @@ export default function Home() {
             {steps.map(step => (
               <li
                 key={step.id}
-                className={`flex flex-col gap-2 rounded-2xl border border-white/10 px-4 py-3 ${
-                  step.active ? 'bg-white/10 text-white' : 'bg-transparent'
-                }`}
+                className={`flex flex-col gap-2 rounded-2xl border border-white/10 px-4 py-3 ${step.active ? 'bg-white/10 text-white' : 'bg-transparent'
+                  }`}
               >
                 <div className="flex items-center justify-between text-xs uppercase tracking-[0.25em]">
                   Paso {step.id}
@@ -268,9 +276,8 @@ export default function Home() {
             </div>
 
             <div
-              className={`rounded-2xl border border-white/10 p-5 shadow-lg shadow-black/30 ${
-                selectedVendor ? 'bg-slate-900/60' : 'bg-slate-900/20'
-              }`}
+              className={`rounded-2xl border border-white/10 p-5 shadow-lg shadow-black/30 ${selectedVendor ? 'bg-slate-900/60' : 'bg-slate-900/20'
+                }`}
             >
               <div className="mb-4 flex items-center justify-between">
                 <div>
@@ -343,7 +350,7 @@ export default function Home() {
               </div>
               <button
                 onClick={handleGenerate}
-                disabled={loading}
+                disabled={loading || !areParamsValid()}
                 className="inline-flex items-center justify-center rounded-xl bg-white px-6 py-3 font-semibold text-slate-900 transition hover:scale-[1.02] disabled:opacity-60"
               >
                 {loading ? 'Generando...' : 'Generar Configuración'}
