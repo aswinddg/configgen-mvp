@@ -2,22 +2,31 @@ import re
 from typing import List
 
 def validate_config(config: str) -> List[str]:
-    """Valida una configuración de Mikrotik y retorna lista de errores"""
+    """Valida una configuración de Mikrotik y retorna lista de errores.
+    
+    Esta validación es flexible y solo verifica que haya consistencia
+    en la configuración generada, no que tenga todos los elementos posibles.
+    """
     issues = []
     
-    # Verificar que tenga configuración IP básica
-    if "/ip address" not in config:
-        issues.append("Falta configuración de direcciones IP")
+    # Si no hay ninguna configuración significativa, es un error
+    if not config.strip() or len(config.strip()) < 50:
+        issues.append("Configuración vacía o muy corta")
+        return issues
     
-    # Verificar que tenga gateway
-    if "/ip route" not in config and "gateway=" not in config:
-        issues.append("Falta configuración de gateway/rutas")
+    # Verificar que tenga al menos una configuración de interface o sistema
+    has_any_config = any([
+        "/system identity" in config,
+        "/ip address" in config,
+        "/interface" in config,
+        "/ip dhcp-client" in config,
+        "/ip firewall" in config
+    ])
     
-    # Verificar que tenga DNS
-    if "/ip dns" not in config:
-        issues.append("Falta configuración de DNS")
+    if not has_any_config:
+        issues.append("No se encontró ninguna configuración válida de Mikrotik")
     
-    # Verificar sintaxis básica de IPs
+    # Verificar sintaxis básica de IPs (solo si hay IPs definidas)
     ip_pattern = r'\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b'
     ips_found = re.findall(ip_pattern, config)
     
@@ -34,18 +43,18 @@ def validate_params(params: dict) -> List[str]:
     """Valida los parámetros antes de generar la configuración"""
     issues = []
     
-    # Validar IP WAN
-    if 'wan_ip' in params:
+    # Validar IP WAN solo si está definida
+    if 'wan_ip' in params and params['wan_ip']:
         if not _is_valid_ip(params['wan_ip']):
             issues.append("IP WAN inválida")
     
-    # Validar Gateway
-    if 'gateway' in params:
+    # Validar Gateway solo si está definido
+    if 'gateway' in params and params['gateway']:
         if not _is_valid_ip(params['gateway']):
             issues.append("Gateway inválido")
     
-    # Validar máscara
-    if 'wan_mask' in params:
+    # Validar máscara solo si está definida
+    if 'wan_mask' in params and params['wan_mask']:
         try:
             mask = int(params['wan_mask'])
             if mask < 1 or mask > 32:
@@ -58,6 +67,8 @@ def validate_params(params: dict) -> List[str]:
 def _is_valid_ip(ip: str) -> bool:
     """Valida formato de IP"""
     try:
+        if not ip or not ip.strip():
+            return True  # Empty is valid (will be handled by template)
         octets = ip.split('.')
         if len(octets) != 4:
             return False

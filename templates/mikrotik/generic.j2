@@ -1,0 +1,93 @@
+# Configuración Modular - Mikrotik
+# Generado automáticamente
+
+/system identity
+set name={{ system_identity }}
+
+{# --- WAN CONFIGURATION --- #}
+{% if wan_enabled == 'Yes' %}
+/interface ethernet set [ find default-name={{ wan_interface }} ] comment="WAN Interface"
+
+{% if wan_type == 'DHCP' %}
+/ip dhcp-client
+add comment="WAN DHCP Client" interface={{ wan_interface }} disabled=no
+{% elif wan_type == 'Static' %}
+/ip address
+add address={{ wan_ip }}/{{ wan_mask }} interface={{ wan_interface }} comment="WAN Static IP"
+
+/ip route
+add dst-address=0.0.0.0/0 gateway={{ gateway }} comment="Default Route"
+{% endif %}
+{% endif %}
+
+{# --- LAN CONFIGURATION --- #}
+{% if lan_enabled == 'Yes' %}
+{% if lan_type == 'Bridge' %}
+/interface bridge
+add name="{{ lan_interface_name }}" comment="LAN Bridge"
+
+{% if bridge_ports is defined and bridge_ports %}
+/interface bridge port
+{% for port in bridge_ports.split(',') %}
+add bridge="{{ lan_interface_name }}" interface={{ port.strip() }}
+{% endfor %}
+{% endif %}
+{% endif %}
+
+/ip address
+add address={{ lan_ip }}/{{ lan_mask }} interface="{{ lan_interface_name }}" network={{ lan_network }}
+{% endif %}
+
+{# --- DHCP SERVER --- #}
+{% if dhcp_server_enabled == 'Yes' %}
+/ip pool
+add name=dhcp_pool_lan ranges={{ dhcp_pool_start }}-{{ dhcp_pool_end }}
+
+/ip dhcp-server
+add address-pool=dhcp_pool_lan interface="{{ lan_interface_name }}" lease-time={{ dhcp_lease_time }} name=dhcp_server_lan disabled=no
+
+/ip dhcp-server network
+add address={{ lan_network }}/{{ lan_mask }} gateway={{ lan_ip }} {% if dns_servers %}dns-server={{ dns_servers }}{% endif %}
+{% endif %}
+
+{# --- NAT CONFIGURATION --- #}
+{% if wan_enabled == 'Yes' and enable_nat == 'Yes' %}
+# Configuración de NAT
+
+{% if nat_pool is defined and nat_pool %}
+# Configurar NAT Pool (Address List)
+/ip firewall address-list
+{% for addr in nat_pool.split(',') %}
+add list=nat_pool address={{ addr.strip() }}
+{% endfor %}
+{% endif %}
+
+{% if nat_inside_source_static is defined and nat_inside_source_static %}
+# Configurar NAT estático (Destination NAT)
+/ip firewall nat
+{% for mapping in nat_inside_source_static.split(',') %}
+{% set parts = mapping.strip().split() %}
+{% if parts|length >= 2 %}
+add chain=dstnat dst-address={{ parts[1] }} action=dst-nat to-addresses={{ parts[0] }} comment="Static NAT {{ parts[1] }} -> {{ parts[0] }}"
+{% endif %}
+{% endfor %}
+{% endif %}
+
+# NAT Masquerade para salida a internet
+/ip firewall nat
+{% if nat_inside_source_list is defined and nat_inside_source_list %}
+add chain=srcnat src-address={{ nat_inside_source_list }} out-interface={{ nat_outside if nat_outside is defined and nat_outside else wan_interface }} action=masquerade comment="NAT Masquerade - Custom Source"
+{% else %}
+add chain=srcnat out-interface={{ nat_outside if nat_outside is defined and nat_outside else wan_interface }} action=masquerade comment="NAT Masquerade"
+{% endif %}
+{% endif %}
+
+{# --- BASIC FIREWALL --- #}
+/ip firewall filter
+add chain=input action=accept connection-state=established,related comment="Accept established/related"
+add chain=input action=accept src-address={{ lan_network }}/{{ lan_mask }} comment="Accept from LAN"
+add chain=input action=drop comment="Drop all other input"
+
+add chain=forward action=accept connection-state=established,related comment="Accept established/related"
+add chain=forward action=accept src-address={{ lan_network }}/{{ lan_mask }} comment="Accept from LAN"
+add chain=forward action=drop comment="Drop all other forward"

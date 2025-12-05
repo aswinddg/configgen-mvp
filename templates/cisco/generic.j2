@@ -1,0 +1,95 @@
+! Configuración Modular - Cisco IOS
+! Generado automáticamente
+
+{# --- WAN CONFIGURATION --- #}
+{% if wan_enabled == 'Yes' %}
+interface {{ wan_interface }}
+{% if wan_type == 'Static' %}
+ ip address {{ wan_ip }} {{ wan_mask }}
+{% elif wan_type == 'DHCP' %}
+ ip address dhcp
+{% endif %}
+ no shutdown
+ description WAN Interface
+exit
+
+{% if wan_type == 'Static' %}
+! Configurar ruta por defecto
+ip route 0.0.0.0 0.0.0.0 {{ gateway }}
+{% endif %}
+
+! Configurar DNS
+ip name-server {{ dns1 }}
+{% endif %}
+
+{# --- NAT CONFIGURATION --- #}
+{% if wan_enabled == 'Yes' and enable_nat == 'Yes' %}
+! Configuración de NAT
+
+{% if nat_pool is defined and nat_pool %}
+! Configurar NAT Pool
+ip nat pool {{ nat_pool.split()[0] if ' ' in nat_pool else 'NAT_POOL' }} {{ nat_pool.split()[1] if ' ' in nat_pool else nat_pool }} {{ nat_pool.split()[2] if ' ' in nat_pool else nat_pool }} netmask {{ wan_mask }}
+{% endif %}
+
+{% if nat_inside_source_static is defined and nat_inside_source_static %}
+! Configurar NAT estático
+{% for mapping in nat_inside_source_static.split(',') %}
+{% set parts = mapping.strip().split() %}
+{% if parts|length >= 2 %}
+ip nat inside source static {{ parts[0] }} {{ parts[1] }}
+{% endif %}
+{% endfor %}
+{% endif %}
+
+{% if nat_inside_source_list is defined and nat_inside_source_list %}
+! Configurar ACL personalizada para NAT
+access-list {{ nat_inside_source_list.split()[0] if ' ' in nat_inside_source_list else '100' }} permit ip {{ nat_inside_source_list.split()[1] if ' ' in nat_inside_source_list else lan_ip }} {{ nat_inside_source_list.split()[2] if ' ' in nat_inside_source_list else '0.0.0.255' }} any
+{% else %}
+! Configuración básica de ACL
+access-list 100 permit ip {{ lan_ip }} 0.0.0.255 any
+{% endif %}
+access-list 100 deny ip any any
+
+! NAT para salida a internet
+{% if nat_pool is defined and nat_pool %}
+ip nat inside source list 100 pool {{ nat_pool.split()[0] if ' ' in nat_pool else 'NAT_POOL' }} overload
+{% else %}
+ip nat inside source list 100 interface {{ nat_outside if nat_outside is defined and nat_outside else wan_interface }} overload
+{% endif %}
+
+! Designar interfaces NAT
+interface {{ nat_outside if nat_outside is defined and nat_outside else wan_interface }}
+ ip nat outside
+exit
+{% endif %}
+
+{# --- LAN CONFIGURATION --- #}
+{% if lan_enabled == 'Yes' %}
+{% if lan_type == 'VLAN' %}
+interface {{ lan_interface }}
+ description LAN Interface
+ switchport mode access
+ switchport access vlan 10
+ no shutdown
+exit
+
+interface Vlan10
+ ip address {{ lan_ip }} {{ lan_mask }}
+ {% if wan_enabled == 'Yes' and enable_nat == 'Yes' %}
+ ip nat inside
+ {% endif %}
+ no shutdown
+exit
+{% elif lan_type == 'Interface' %}
+interface {{ nat_inside if nat_inside is defined and nat_inside else lan_interface }}
+ description LAN Interface
+ ip address {{ lan_ip }} {{ lan_mask }}
+ {% if wan_enabled == 'Yes' and enable_nat == 'Yes' %}
+ ip nat inside
+ {% endif %}
+ no shutdown
+exit
+{% endif %}
+{% endif %}
+
+! Configuración completada

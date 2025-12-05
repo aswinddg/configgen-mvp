@@ -11,6 +11,7 @@ app.add_middleware(
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
+    expose_headers=["Content-Disposition"],
 )
 
 app.include_router(vendors.router, prefix="/api")
@@ -26,3 +27,5 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "Ok"}
+
+# Updated: 2025-12-04 - All vendor parameters synchronized (27 params each)
