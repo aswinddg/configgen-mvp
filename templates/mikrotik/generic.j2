@@ -52,34 +52,8 @@ add address={{ lan_network }}/{{ lan_mask }} gateway={{ lan_ip }} {% if dns_serv
 
 {# --- NAT CONFIGURATION --- #}
 {% if wan_enabled == 'Yes' and enable_nat == 'Yes' %}
-# Configuración de NAT
-
-{% if nat_pool is defined and nat_pool %}
-# Configurar NAT Pool (Address List)
-/ip firewall address-list
-{% for addr in nat_pool.split(',') %}
-add list=nat_pool address={{ addr.strip() }}
-{% endfor %}
-{% endif %}
-
-{% if nat_inside_source_static is defined and nat_inside_source_static %}
-# Configurar NAT estático (Destination NAT)
 /ip firewall nat
-{% for mapping in nat_inside_source_static.split(',') %}
-{% set parts = mapping.strip().split() %}
-{% if parts|length >= 2 %}
-add chain=dstnat dst-address={{ parts[1] }} action=dst-nat to-addresses={{ parts[0] }} comment="Static NAT {{ parts[1] }} -> {{ parts[0] }}"
-{% endif %}
-{% endfor %}
-{% endif %}
-
-# NAT Masquerade para salida a internet
-/ip firewall nat
-{% if nat_inside_source_list is defined and nat_inside_source_list %}
-add chain=srcnat src-address={{ nat_inside_source_list }} out-interface={{ nat_outside if nat_outside is defined and nat_outside else wan_interface }} action=masquerade comment="NAT Masquerade - Custom Source"
-{% else %}
-add chain=srcnat out-interface={{ nat_outside if nat_outside is defined and nat_outside else wan_interface }} action=masquerade comment="NAT Masquerade"
-{% endif %}
+add action=masquerade chain=srcnat out-interface={{ nat_outside if nat_outside is defined and nat_outside else wan_interface }}
 {% endif %}
 
 {# --- BASIC FIREWALL --- #}
