@@ -18,7 +18,7 @@ set routing-options static route 0.0.0.0/0 next-hop {{ gateway }}
 # Configurar DNS
 set system name-server {{ dns1 }}
 
-# Configuración básica de firewall
+# Zona untrust para WAN
 set security zones security-zone untrust interfaces {{ wan_interface }}.0
 {% endif %}
 
@@ -44,42 +44,11 @@ set security policies from-zone trust to-zone untrust policy allow-all then perm
 
 {# --- NAT CONFIGURATION --- #}
 {% if wan_enabled == 'Yes' and enable_nat == 'Yes' %}
-# Configuración de NAT
-
-{% if nat_pool is defined and nat_pool %}
-# Configurar NAT Pool
-{% set pool_parts = nat_pool.split() %}
-{% if pool_parts|length >= 3 %}
-set security nat source pool {{ pool_parts[0] }} address {{ pool_parts[1] }} to {{ pool_parts[2] }}
-{% endif %}
-{% endif %}
-
-{% if nat_inside_source_static is defined and nat_inside_source_static %}
-# Configurar NAT estático
-{% for mapping in nat_inside_source_static.split(',') %}
-{% set parts = mapping.strip().split() %}
-{% if parts|length >= 2 %}
-set security nat static rule-set static-nat from zone trust
-set security nat static rule-set static-nat rule static-{{ loop.index }} match destination-address {{ parts[1] }}
-set security nat static rule-set static-nat rule static-{{ loop.index }} then static-nat prefix {{ parts[0] }}/32
-{% endif %}
-{% endfor %}
-{% endif %}
-
-# NAT para salida a internet
+# Configuración de NAT (Source NAT / PAT)
 set security nat source rule-set trust-to-untrust from zone trust
 set security nat source rule-set trust-to-untrust to zone untrust
-{% if nat_inside_source_list is defined and nat_inside_source_list %}
-set security nat source rule-set trust-to-untrust rule source-nat match source-address {{ nat_inside_source_list }}
-{% else %}
 set security nat source rule-set trust-to-untrust rule source-nat match source-address 0.0.0.0/0
-{% endif %}
-{% if nat_pool is defined and nat_pool %}
-{% set pool_parts = nat_pool.split() %}
-set security nat source rule-set trust-to-untrust rule source-nat then source-nat pool {{ pool_parts[0] if pool_parts|length > 0 else 'NAT_POOL' }}
-{% else %}
 set security nat source rule-set trust-to-untrust rule source-nat then source-nat interface
-{% endif %}
 {% endif %}
 
 # Configuración completada
