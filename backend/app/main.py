@@ -7,7 +7,11 @@ app = FastAPI(title="Config Generator MVP", version="0.1.0", description="Genera
 # Configurar CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend Next.js
+    allow_origins=[
+        "http://localhost:3000",
+        "http://34.55.189.253:3000",
+        "http://34.55.189.253",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -27,5 +31,3 @@ def read_root():
 @app.get("/health")
 def health_check():
     return {"status": "Ok"}
-
-# Updated: 2025-12-04 - All vendor parameters synchronized (27 params each)
