@@ -161,10 +161,19 @@ export default function Home() {
           value={formData[param.key] || ''}
           onChange={(e) => {
             console.log(`CHANGE ${param.key} -> ${e.target.value}`);
-            setFormData(prev => ({
-              ...prev,
-              [param.key]: e.target.value
-            }));
+            const newValue = e.target.value;
+            setFormData(prev => {
+              const updated = { ...prev, [param.key]: newValue };
+              // Si cambia wan_interface, actualizar nat_outside automáticamente
+              if (param.key === 'wan_interface' && newValue) {
+                updated['nat_outside'] = newValue;
+              }
+              // Si cambia lan_interface, actualizar nat_inside automáticamente
+              if (param.key === 'lan_interface' && newValue) {
+                updated['nat_inside'] = newValue;
+              }
+              return updated;
+            });
           }}
         >
           <option value="">-- Seleccionar {param.label} --</option>
